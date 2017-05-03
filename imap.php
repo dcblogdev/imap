@@ -1,4 +1,5 @@
 <?php
+
 class Imap {
 
     private $imap;
@@ -9,17 +10,15 @@ class Imap {
     private $secure;
     private $connection;
     private $saveFolder;
-    private $webPath;
     private $delete;
 
-    public function __construct($email, $password, $host, $port, $folder, $saveFolder, $webPath, $delete = false)
+    public function __construct($email, $password, $host, $port, $folder, $saveFolder, $delete = false)
     {
         $this->email      = $email;
         $this->host       = $host;
         $this->port       = $port;
         $this->folder     = $folder;
         $this->saveFolder = $saveFolder;
-        $this->webPath    = $webPath;
         $this->delete     = $delete;
 
         // Connect to a remote imap server
