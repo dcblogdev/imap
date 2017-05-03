@@ -10,8 +10,9 @@ class Imap {
     private $connection;
     private $saveFolder;
     private $webPath;
+    private $delete;
 
-    public function __construct($email, $password, $host, $port, $folder, $saveFolder, $webPath)
+    public function __construct($email, $password, $host, $port, $folder, $saveFolder, $webPath, $delete = false)
     {
         $this->email      = $email;
         $this->host       = $host;
@@ -19,6 +20,7 @@ class Imap {
         $this->folder     = $folder;
         $this->saveFolder = $saveFolder;
         $this->webPath    = $webPath;
+        $this->delete     = $delete;
 
         // Connect to a remote imap server
         if ($port != '143') {
@@ -27,6 +29,13 @@ class Imap {
 
         $this->connection = "{{$host}:{$port}/imap/{$this->secure}novalidate-cert}$folder";
         $this->imap       = imap_open($this->connection, $email, $password);
+
+        $accountPath = $this->saveFolder.'/'.$email;
+
+        //create folder for email account
+        if (!file_exists($accountPath)) {
+            mkdir($accountPath);
+        }
     }
 
     public function getFolders()
@@ -53,7 +62,7 @@ class Imap {
             $string = preg_split("@=\?.{0,}\?[Bb]\?@",$string);
 
             while (list($key, $value) = each($string)) {
-                
+
                 if (preg_match("@\?=@", $value)) {
                     $arrTemp    = preg_split("@\?=@", $value);
                     $arrTemp[0] = base64_decode($arrTemp[0]);
@@ -73,7 +82,7 @@ class Imap {
         return trim($string);
     }
 
-    private function is_in_array($needle, $haystack) 
+    private function is_in_array($needle, $haystack)
     {
         foreach ($needle as $stack) {
             if (in_array(strtolower($stack), $haystack)) {
@@ -114,7 +123,7 @@ class Imap {
                 $toaddress = null;
                 $ccaddress = null;
 
-                if(is_array($from)){
+                if (is_array($from)) {
                     foreach ($from as $id => $object) {
                         $fromname = $object->personal;
                         $fromaddress.= $object->mailbox . "@" . $object->host;
@@ -122,18 +131,18 @@ class Imap {
                     }
                 }
 
-                if(is_array($to)){
-                 foreach ($to as $id => $object) {
-                   $toaddress.= $object->mailbox . "@" . $object->host.' ';
-                   $check[] = strtolower($object->mailbox . "@" . $object->host);
-                 }
+                if (is_array($to)) {
+                    foreach ($to as $id => $object) {
+                        $toaddress.= $object->mailbox . "@" . $object->host.' ';
+                        $check[] = strtolower($object->mailbox . "@" . $object->host);
+                    }
                 }
 
-                if(is_array($cc)){
-                 foreach ($cc as $id => $object) {
-                   $ccaddress.= $object->mailbox . "@" . $object->host.' ';
-                   $check[] = strtolower($object->mailbox . "@" . $object->host);
-                 }
+                if (is_array($cc)) {
+                    foreach ($cc as $id => $object) {
+                        $ccaddress.= $object->mailbox . "@" . $object->host.' ';
+                        $check[] = strtolower($object->mailbox . "@" . $object->host);
+                    }
                 }
 
                 $target = array(
@@ -141,28 +150,38 @@ class Imap {
                     strtolower($fromaddress),
                     strtolower($toaddress),
                     strtolower($ccaddress)
-                );   
+                );
+
+                $path = $this->saveFolder.'/'.$this->email.'/'.$msgno.'/';
 
                 //if not in the exclude array insert
                 if($this->is_in_array($exclude, $target) == false && $this->is_in_array($exclude, $check) == false){
-                    
-                    $data[] = array(
-                        'account' => $this->email,
-                        'folder' => $this->folder,
-                        'subject' => $this->decode_utf8($subject),
-                        'msgno' => $msgno,
-                        'emailDate' => date('Y-m-d H:i:s', $date),
-                        'fromName' => $fromname,
+
+                    $body = $this->getBody($msg_id);
+
+                    $data[] = [
+                        'account'     => $this->email,
+                        'folder'      => $this->folder,
+                        'subject'     => $this->decode_utf8($subject),
+                        'msgno'       => $msgno,
+                        'emailDate'   => date('Y-m-d H:i:s', $date),
+                        'fromName'    => $fromname,
                         'fromAddress' => $fromaddress,
-                        'toAddress' => $toaddress,
-                        'ccAddress' => $ccaddress,
-                        'body' => $this->getBody($msg_id)
-                    );
+                        'toAddress'   => $toaddress,
+                        'ccAddress'   => $ccaddress,
+                        'body'        => $this->getBody($msg_id),
+                        'attachments' => $this->getAttachments($msg_id)
+                    ];
+
+                    if ($this->delete == true) {
+                        imap_delete($this->imap, $msg_id); //mark for deletion
+                        imap_expunge($this->imap); //delete all marked for deletion
+                    }
 
                     //if($header->Recent == 'Y'){
                        //mark email as unread
                         //imap_clearflag_full($this->imap, $msg_id, "\\Seen");
-                    //} 
+                    //}
 
                 }
 
@@ -175,105 +194,127 @@ class Imap {
 
     public function getBody($uid) {
         $body = $this->get_part($uid, "TEXT/HTML");
+
         // if HTML body is empty, try getting text body
         if ($body == "") {
             $body = $this->get_part($uid, "TEXT/PLAIN");
         }
 
+        //store email account to local variable
+        $email = $this->email;
+
+        //replace cid with full path to image
+        $body = preg_replace_callback(
+            '/src="cid:(.*)">/Uims',
+            function($m) use($email, $uid){
+                //split on @
+                $parts = explode('@', $m[1]);
+
+                //replace local path with absolute path
+                $img = str_replace($parts[0], resource_url($email.'/'.$uid.'/'.$parts[0], 'Emails'), $parts[0]);
+                return "src='$img'>";
+           },
+        $body);
+
+        return trim(utf8_encode(quoted_printable_decode($body)));
+    }
+
+    public function getAttachments($uid) {
+
+        $attachments = [];
+
         $info = imap_fetchstructure($this->imap, $uid);
-        if($info->parts){
+        if (isset($info->parts)) {
             $i = 0;
             foreach ($info->parts as $part) {
 
+                $path = $this->saveFolder.'/'.$this->email.'/'.$uid.'/';
+
                 if (array_key_exists('disposition', $part)) {
+
+                    //create folder for email account
+                    if (!file_exists($path)) {
+                        mkdir($path);
+                    }
+
                     if (strtolower($part->disposition) == "inline") {
-
-                        $this->save_inline_image($info,$i,$uid);
-
-                        $saveFolder = $this->saveFolder;
-
-                        $body = preg_replace_callback(
-                           '/src="cid:(.*)">/Uims',
-                           function($m) use($uid, $part, $saveFolder){
-                            $parts = explode('@', $m[1]);
-                            $img = str_replace($m[1], $part->description, $parts[0]);
-                            return "src='".$this->webPath."/{$uid}/{$img}'>";
-                           },
-                        $body);
-
+                        $this->save_inline_image($info, $i, $uid, $path);
                     }
 
                     if (strtolower($part->disposition) == "attachment") {
-                        $this->save_attachment($info,$i,$uid);
+                        $attachments[] = $this->save_attachment($info, $i, $uid, $path);
                     }
+                } elseif(isset($part->parts)) {
+
+                    foreach ($part->parts as $linepart) {
+                        if (array_key_exists('disposition', $part)) {
+
+                            //create folder for email account
+                            if (!file_exists($path)) {
+                                mkdir($path);
+                            }
+
+                            if (strtolower($part->disposition) == "inline") {
+                                $this->save_inline_image($info, $i, $uid, $path);
+                            }
+
+                            if (strtolower($part->disposition) == "attachment") {
+                                $attachments[] = $this->save_attachment($info, $i, $uid, $path);
+                            }
+                        }
+                    }
+
                 }
-                
+
             $i++;}
         }
 
-        // return trim(utf8_encode(quoted_printable_decode($body)));
-        return $body;
+        return $attachments;
     }
 
-    private function save_inline_image($structure,$k,$mid)
+    private function save_inline_image($structure, $k, $mid, $path)
+    {
+        if (isset($structure->parts[$k]->dparameters[0])) {
+
+            //extract file name from headers
+            $fileName = strtolower($structure->parts[$k]->dparameters[0]->value);
+
+            //extract attachment from email body
+            $fileSource = base64_decode(imap_fetchbody($this->imap, $mid, $k+1, FT_PEEK));
+
+            if (!is_dir($path)) {
+              // dir doesn't exist, make it
+              mkdir($path);
+            }
+
+            $file = $path.$fileName;
+
+            //only save if file does not exist
+            if(!file_exists($file) && $fileName !=''){
+                file_put_contents($file, $fileSource);
+            }
+        }
+    }
+
+    private function save_attachment($structure, $k, $mid, $path)
     {
         //extract file name from headers
         $fileName = strtolower($structure->parts[$k]->dparameters[0]->value);
 
-        //extract attachment from email body
-        $fileSource = base64_decode(imap_fetchbody($this->imap, $mid, $k+1, FT_PEEK));
-
-        if (!is_dir($this->saveFolder.'/'.$mid)) {
-          // dir doesn't exist, make it
-          mkdir($this->saveFolder.'/'.$mid);
-        }
-
-        $file = $this->saveFolder."/$mid/$fileName";
-
-        //only save if file does not exist
-        if(!file_exists($file) && $fileName !=''){
-            file_put_contents($file, $fileSource);
-        }
-
-    }
-
-    private function save_attachment($structure,$k,$mid)
-    {
-        //extract file name from headers
-        $fileName = strtolower($structure->parts[$k]->dparameters[0]->value);
-
-        // $header = imap_header($this->imap, $mid);
-        // $foldername = $header->udate.'-'.$mid; 
-
-        if (!is_dir($this->saveFolder.'/'.$mid)) {
-            // dir doesn't exist, make it
-            mkdir($this->saveFolder.'/'.$mid);
-        }
-
-        $file = $this->saveFolder."/$mid/$fileName";
+        $file = $path.$fileName;
         $mege = imap_fetchbody($this->imap, $mid, $k+1, FT_PEEK);
         $fp   = fopen($file, 'w');
         $data = $this->getdecodevalue($mege,$structure->parts[$k]->type);
-        
+
         fwrite($fp, $data);
         fclose($fp);
 
-        $data = array(
-            'account' => $this->email,
-            'msgno' => $mid,
-            'file' => $file,
+        return [
+            'account'  => $this->email,
+            'msgno'    => $mid,
+            'file'     => $file,
             'fileName' => $fileName
-        );
-
-        /*$db = Database::get();
-        $result = $db->select("SELECT id FROM ".PREFIX."email_attachments WHERE account = :account AND msgno = :msgno AND file = :file", array(
-                ':account' => $this->email,
-                ':msgno' => $mid,
-                ':file' => $file
-            ));
-        if(count($result) == 0){
-            $db->insert(PREFIX."email_attachments",$data);
-        }*/
+        ];
     }
 
     private function getdecodevalue($message,$coding) {
@@ -311,7 +352,7 @@ class Imap {
                 switch ($structure->encoding) {
                     # 7BIT
                     case 0:
-                        return quoted_printable_decode($text);
+                        return imap_qprint($text);
                     # 8BIT
                     case 1:
                         return imap_8bit($text);
