@@ -1,4 +1,5 @@
 <?php
+namespace Dcblogdev\Imap;
 
 class Imap {
 

@@ -1,5 +1,14 @@
 # imap
-IMAP class for reading imap emails with PHP
+
+IMAP class for reading IMAP emails with PHP
+
+## Install
+
+Using composer include the repository by typing the following into a terminal
+
+```
+composer require dcblogdev/imap
+```
 
 Example usage:
 
@@ -18,7 +27,7 @@ $port     = '993'//port number
 $savePath = "emails";//folder to save attachments
 $delete   = false;//set to true to delete email
 
-initialise email
+//initialise email
 $imap = new Imap($email, $password, $host, $port, 'Inbox', $savePath, $delete);
 
 //get emails pass in the search term and exclude array

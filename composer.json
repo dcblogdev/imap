@@ -1,0 +1,22 @@
+{
+    "name": "dcblogdev/imap",
+    "description": "IMAP class for reading imap emails with PHP",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "David Carr",
+            "email": "dave@dcblog.dev",
+            "homepage": "https://dcblog.dev",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=7.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dcblogdev\\Imap\\": "/src"
+        }
+    },
+    "minimum-stability": "dev"
+}
