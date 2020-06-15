@@ -13,6 +13,8 @@ composer require dcblogdev/imap
 Example usage:
 
 ```php
+use Dcblogdev\Imap\Imap;
+
 //set search criteria
 $date = date('d-M-y', strtotime('1 day ago'));
 $term = 'ALL UNDELETED SINCE "'.$date.'"';
