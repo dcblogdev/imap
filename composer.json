@@ -15,7 +15,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Dcblogdev\\Imap\\": "/src"
+            "Dcblogdev\\Imap\\": "src/"
         }
     },
     "minimum-stability": "dev"

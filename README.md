@@ -20,10 +20,10 @@ $term = 'ALL UNDELETED SINCE "'.$date.'"';
 //ignore array of emails
 $exclude = [];
 
-$email    = 'someone@domain.com'
+$email    = 'someone@domain.com';
 $password = 'emailpassword';
-$host     = 'outlook.office365.com'//your email host
-$port     = '993'//port number
+$host     = 'outlook.office365.com';//your email host
+$port     = '993';//port number
 $savePath = "emails";//folder to save attachments
 $delete   = false;//set to true to delete email
 
