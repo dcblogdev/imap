@@ -13,6 +13,8 @@ composer require dcblogdev/imap
 Example usage:
 
 ```php
+require('vendor/autoload.php');
+
 use Dcblogdev\Imap\Imap;
 
 //set search criteria
