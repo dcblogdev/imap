@@ -1,20 +1,16 @@
-# imap
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/dcblogdev/imap.svg?style=flat-square)](https://packagist.org/packages/dcblogdev/imap)
+[![Total Downloads](https://img.shields.io/packagist/dt/dcblogdev/imap.svg?style=flat-square)](https://packagist.org/packages/dcblogdev/imap)
+
+![Logo](https://repository-images.githubusercontent.com/74881390/3b747080-49bf-11eb-9d44-c941e96ba0e7)
 
 IMAP class for reading IMAP emails with PHP
 
-## Install
+# Documentation and install instructions 
+[https://dcblog.dev/docs/imap](https://dcblog.dev/docs/imap)
 
-Using composer include the repository by typing the following into a terminal
-
-```
-composer require dcblogdev/imap
-```
-
-Example usage:
+# Example usage:
 
 ```php
-require('vendor/autoload.php');
-
 use Dcblogdev\Imap\Imap;
 
 //set search criteria
