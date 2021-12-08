@@ -5,9 +5,6 @@
 
 IMAP class for reading IMAP emails with PHP
 
-# Documentation and install instructions 
-[https://dcblog.dev/docs/imap](https://dcblog.dev/docs/imap)
-
 # Example usage:
 
 ```php
