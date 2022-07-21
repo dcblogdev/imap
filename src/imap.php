@@ -65,7 +65,7 @@ class Imap
 
             foreach ($search as $mid) {
                 $check  = [];
-                $header = imap_header($this->imap, $mid);
+                $header = imap_headerinfo($this->imap, $mid);
 
                 $subject = $header->subject;
                 $msgno   = $header->Msgno;
